@@ -1,6 +1,6 @@
 from flask import Flask, request, jsonify
 import sqlite3
-# from utils.llm_client import get_sql_from_llm
+from utils.llm_client import get_sql_from_llm
 
 app = Flask(__name__)
 DB_PATH = "db/sales.db"
@@ -41,5 +41,10 @@ def query():
         return jsonify({"error": str(e)}), 500
 
 
-if __name__ == "__main__":
-    app.run(debug=True)
+from werkzeug.serving import make_server
+ 
+if __name__ == '__main__':
+    server = make_server('127.0.0.1', 5000, app)
+    server.serve_forever()
+    app.run()
+
