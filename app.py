@@ -1,4 +1,4 @@
-from flask import Flask, request, jsonify
+from flask import Flask, request, send_file, jsonify, send_from_directory
 import sqlite3
 from utils.llm_client import get_sql_from_llm
 
@@ -39,6 +39,20 @@ def query():
 
     except Exception as e:
         return jsonify({"error": str(e)}), 500
+
+
+@app.route('/')
+def index():
+    return send_from_directory('.', 'index.html')
+
+
+@app.route('/chat', methods=['POST'])
+def chat():
+    data = request.json
+    user_input = data.get('message', '')
+    if '发一张wallpaper' in user_input:
+        return send_file('pics/njs-wallpaper.jpg', mimetype='image/jpeg')
+    return jsonify({'response': '暂不支持该指令'}), 200
 
 
 from werkzeug.serving import make_server

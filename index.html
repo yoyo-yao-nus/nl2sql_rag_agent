@@ -1,0 +1,419 @@
+<!DOCTYPE html>
+<html lang="zh-CN">
+<head>
+    <meta charset="UTF-8">
+    <title>智能体对话演示</title>
+    <style>
+        body {
+            background: linear-gradient(135deg, #e3f0ff 0%, #fafdff 50%, #b3d8ff 100%);
+            color: #234;
+            font-family: 'Inter', 'Segoe UI', Arial, sans-serif;
+            margin: 0;
+            padding: 0;
+            min-height: 100vh;
+        }
+        .container {
+            display: flex;
+            height: 100vh;
+        }
+        /* 左侧历史栏 */
+        #sidebar {
+            width: 240px;
+            background: linear-gradient(120deg, #e3f0ff 0%, #b3d8ff 100%);
+            border-right: 1px solid #d0e3fa;
+            display: flex;
+            flex-direction: column;
+            transition: width 0.2s, background 0.2s, border 0.2s, box-shadow 0.2s;
+            overflow: hidden;
+            position: relative;
+            box-shadow: 2px 0 8px #b3d8ff33;
+        }
+        #sidebar.collapsed {
+            width: 56px;
+            background: transparent;
+            border-right: none;
+            box-shadow: none;
+        }
+        #sidebar-header {
+            padding: 20px 16px 12px 16px;
+            font-size: 20px;
+            font-weight: bold;
+            letter-spacing: 1px;
+            color: #2176ff;
+            display: flex;
+            align-items: center;
+            justify-content: space-between;
+            transition: opacity 0.2s;
+        }
+        #sidebar.collapsed #sidebar-header span,
+        #sidebar.collapsed #history-list {
+            opacity: 0;
+            pointer-events: none;
+            width: 0;
+            height: 0;
+            overflow: hidden;
+        }
+        #toggle-sidebar {
+            background: none;
+            border: none;
+            color: #2176ff;
+            font-size: 22px;
+            cursor: pointer;
+            padding: 0 0 0 2px;
+            transition: background 0.2s;
+            width: 36px;
+            height: 36px;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+        }
+        #sidebar.collapsed #toggle-sidebar {
+            margin: 0 auto;
+            background: #1656b7;
+            border-radius: 50%;
+            box-shadow: 0 2px 8px #b3d8ff44;
+            width: 44px;
+            height: 44px;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            position: absolute;
+            left: 6px;
+            top: 16px;
+            z-index: 10;
+        }
+        #toggle-sidebar .hamburger {
+            display: none;
+            color: #1656b7 !important;
+        }
+        #sidebar.collapsed #toggle-sidebar .arrow {
+            display: none;
+        }
+        #sidebar.collapsed #toggle-sidebar .hamburger {
+            display: block;
+            color: #fff !important;
+            font-size: 26px !important;
+        }
+        #sidebar:not(.collapsed) #toggle-sidebar .arrow {
+            display: block;
+        }
+        #sidebar:not(.collapsed) #toggle-sidebar .hamburger {
+            display: none;
+        }
+        #history-list {
+            flex: 1;
+            overflow-y: auto;
+            padding: 0 8px 8px 8px;
+            transition: opacity 0.2s;
+        }
+        .history-item {
+            background: #fafdff;
+            color: #2176ff;
+            border-radius: 8px;
+            margin: 8px 0;
+            padding: 12px 16px;
+            cursor: pointer;
+            font-size: 15px;
+            transition: background 0.2s, color 0.2s;
+            border: 1px solid #d0e3fa;
+        }
+        .history-item:hover {
+            background: #e3f0ff;
+            color: #1656b7;
+        }
+        /* 中间问答区 */
+        #main {
+            flex: 1;
+            display: flex;
+            flex-direction: column;
+            align-items: center;
+            justify-content: flex-end;
+            background: transparent;
+            position: relative;
+            height: 100vh;
+            min-height: 0;
+        }
+        #messages {
+            width: 480px;
+            margin: 0 auto;
+            flex: 1 1 0%;
+            min-height: 0;
+            max-height: none;
+            overflow-y: auto;
+            display: flex;
+            flex-direction: column;
+            gap: 12px;
+            align-items: flex-end;
+            padding: 32px 0 120px 0;
+            box-sizing: border-box;
+        }
+        .msg-user, .msg-bot {
+            padding: 12px 16px;
+            border-radius: 18px;
+            max-width: 100%;
+            word-break: break-all;
+            font-size: 16px;
+            line-height: 1.6;
+            border: 1px solid #d0e3fa;
+            box-shadow: 0 2px 8px #b3d8ff22;
+            margin-left: 0;
+            margin-right: 0;
+        }
+        .msg-user {
+            align-self: flex-end;
+            background: linear-gradient(90deg, #e3f0ff 60%, #b3d8ff 100%);
+            color: #2176ff;
+            margin-right: 0;
+            padding-right: 16px;
+        }
+        .msg-bot {
+            align-self: flex-start;
+            background: #fafdff;
+            color: #1656b7;
+            margin-left: 0;
+        }
+        .msg-bot img {
+            max-width: 220px;
+            border-radius: 8px;
+            margin-top: 8px;
+            box-shadow: 0 2px 8px #b3d8ff44;
+        }
+        /* 底部输入区 */
+        #input-bar {
+            position: fixed;
+            left: 0;
+            right: 0;
+            bottom: 32px;
+            display: block;
+            pointer-events: none;
+            z-index: 20;
+        }
+        #input-inner {
+            width: 480px;
+            margin: 0 auto;
+            background: #fff;
+            border-radius: 24px;
+            box-shadow: 0 4px 24px #b3d8ff33;
+            border: 1.5px solid #d0e3fa;
+            display: flex;
+            align-items: center;
+            padding: 8px 16px 8px 20px;
+            pointer-events: auto;
+            box-sizing: border-box;
+        }
+        #user-input {
+            flex: 1;
+            padding: 10px 0 10px 0;
+            border-radius: 18px;
+            border: none;
+            background: transparent;
+            color: #2176ff;
+            font-size: 16px;
+            outline: none;
+        }
+        #user-input:focus {
+            background: #e3f0ff;
+        }
+        #send-btn {
+            padding: 8px 20px;
+            border: none;
+            border-radius: 18px;
+            background: linear-gradient(90deg, #2176ff 60%, #5ec6fa 100%);
+            color: #fff;
+            font-size: 16px;
+            font-weight: 600;
+            cursor: pointer;
+            transition: background 0.2s;
+            box-shadow: 0 2px 8px #b3d8ff44;
+            margin-left: 10px;
+        }
+        #send-btn:hover {
+            background: linear-gradient(90deg, #1656b7 60%, #2176ff 100%);
+        }
+        /* 右侧数据库表格 */
+        #db-table {
+            width: 320px;
+            background: linear-gradient(120deg, #e3f0ff 0%, #b3d8ff 100%);
+            border-left: 1px solid #d0e3fa;
+            padding: 24px 12px;
+            overflow-x: auto;
+            box-shadow: -2px 0 8px #b3d8ff33;
+            display: flex;
+            flex-direction: column;
+            transition: width 0.2s, min-width 0.2s, padding 0.2s;
+        }
+        #db-table.collapsed {
+            width: 0;
+            min-width: 0;
+            padding: 0;
+        }
+        #db-table-header {
+            display: flex;
+            align-items: center;
+            justify-content: space-between;
+            margin-bottom: 12px;
+        }
+        #toggle-dbtable {
+            background: none;
+            border: none;
+            color: #1656b7;
+            font-size: 22px;
+            cursor: pointer;
+            width: 36px;
+            height: 36px;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+        }
+        #db-table.collapsed #db-table-header,
+        #db-table.collapsed table {
+            display: none;
+        }
+        #db-table table {
+            width: 100%;
+            border-collapse: collapse;
+            color: #2176ff;
+            font-size: 15px;
+            background: #fafdff;
+            border-radius: 8px;
+            overflow: hidden;
+        }
+        #db-table th, #db-table td {
+            border: 1px solid #d0e3fa;
+            padding: 8px 10px;
+            text-align: left;
+        }
+        #db-table th {
+            background: #e3f0ff;
+            color: #1656b7;
+        }
+    </style>
+</head>
+<body>
+    <div class="container">
+        <!-- 左侧历史栏 -->
+        <div id="sidebar">
+            <div id="sidebar-header">
+                <span>历史对话</span>
+                <button id="toggle-sidebar">
+                    <span class="arrow">⮜</span>
+                    <span class="hamburger" style="font-size:22px;color:#1656b7;">&#9776;</span>
+                </button>
+            </div>
+            <div id="history-list">
+                <div class="history-item">发一张wallpaper</div>
+                <div class="history-item">你好</div>
+            </div>
+        </div>
+        <!-- 中间问答区 -->
+        <div id="main">
+            <div id="messages"></div>
+        </div>
+        <!-- 右侧数据库表格区 -->
+        <div id="db-table" class="collapsed">
+            <div id="db-table-header">
+                <span style="font-weight:bold;color:#1656b7;">数据表</span>
+                <button id="toggle-dbtable">⮞</button>
+            </div>
+            <table>
+                <thead>
+                    <tr><th>ID</th><th>姓名</th><th>销售额</th></tr>
+                </thead>
+                <tbody>
+                    <tr><td>1</td><td>张三</td><td>1000</td></tr>
+                    <tr><td>2</td><td>李四</td><td>2000</td></tr>
+                </tbody>
+            </table>
+        </div>
+    </div>
+    <!-- 底部输入区 -->
+    <div id="input-bar">
+        <div id="input-inner">
+            <input type="text" id="user-input" placeholder="请输入指令...">
+            <button id="send-btn">发送</button>
+        </div>
+    </div>
+    <script>
+        // 侧边栏收起/展开
+        const sidebar = document.getElementById('sidebar');
+        const toggleBtn = document.getElementById('toggle-sidebar');
+        toggleBtn.onclick = function() {
+            sidebar.classList.toggle('collapsed');
+        };
+
+        // 右侧表格收起/展开
+        const dbTable = document.getElementById('db-table');
+        const toggleDbBtn = document.getElementById('toggle-dbtable');
+        toggleDbBtn.onclick = function() {
+            dbTable.classList.toggle('collapsed');
+            toggleDbBtn.textContent = dbTable.classList.contains('collapsed') ? '⮞' : '⮜';
+        };
+
+        // 聊天逻辑
+        const sendBtn = document.getElementById('send-btn');
+        const userInput = document.getElementById('user-input');
+        const messages = document.getElementById('messages');
+
+        // 判断是否为取数需求的简单示例（可根据实际需求优化）
+        function isQueryRequest(msg) {
+            return /查|统计|销售|金额|数据|表|总数|数量|排行|top|sum|count|平均|平均值|最大|最小|list|select|where|from|group|order/i.test(msg);
+        }
+
+        function appendMessage(content, isUser, isImage) {
+            const div = document.createElement('div');
+            div.className = isUser ? 'msg-user' : 'msg-bot';
+            if (isImage) {
+                div.innerHTML = content;
+            } else {
+                div.textContent = content;
+            }
+            messages.appendChild(div);
+            messages.scrollTop = messages.scrollHeight;
+        }
+
+        async function sendUserMessage() {
+            const msg = userInput.value.trim();
+            if (!msg) return;
+            appendMessage(msg, true);
+            userInput.value = '';
+            // 判断是否为取数需求
+            if (isQueryRequest(msg)) {
+                dbTable.classList.remove('collapsed');
+                toggleDbBtn.textContent = '⮜';
+                // 这里可根据后端返回动态刷新表格内容
+            }
+            let botMsg = '';
+            if (msg.includes('发一张wallpaper')) {
+                const response = await fetch('/chat', {
+                    method: 'POST',
+                    headers: { 'Content-Type': 'application/json' },
+                    body: JSON.stringify({ message: msg })
+                });
+                if (response.headers.get('content-type').includes('image')) {
+                    const blob = await response.blob();
+                    const imgUrl = URL.createObjectURL(blob);
+                    appendMessage(`<img src="${imgUrl}" alt="wallpaper" />`, false, true);
+                    return;
+                } else {
+                    const data = await response.json();
+                    botMsg = data.response;
+                }
+            } else {
+                const response = await fetch('/chat', {
+                    method: 'POST',
+                    headers: { 'Content-Type': 'application/json' },
+                    body: JSON.stringify({ message: msg })
+                });
+                const data = await response.json();
+                botMsg = data.response;
+            }
+            appendMessage(botMsg, false);
+        }
+
+        sendBtn.onclick = sendUserMessage;
+        userInput.addEventListener('keydown', function(e) {
+            if (e.key === 'Enter') sendUserMessage();
+        });
+    </script>
+</body>
+</html> 
